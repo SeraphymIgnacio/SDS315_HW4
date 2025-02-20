@@ -1,0 +1,175 @@
+---
+title: "HW4-SDS315"
+author: "Seraphym Ignacio"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+EID: sri346
+
+GitHub Link: <https://github.com/SeraphymIgnacio/SDS315_HW4.git>
+
+```{r echo = FALSE, include = FALSE, warning = FALSE, message = FALSE}
+# setup (just in case)
+library(tidyverse)
+library(rvest)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(stringr)
+library(knitr)
+library(lubridate)
+library(mosaic)
+```
+
+# Problem 1
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# q1
+
+bank_sim = do(100000) * nflip(n = 2021, prob = 0.024)
+
+ggplot(bank_sim) + 
+  geom_histogram(aes(x = nflip), binwidth = 1)
+
+pval <- (sum(bank_sim >= 70)) / (100000)
+```
+
+The null hypothesis being tested is "over the long run, securities trades from the Iron Bank are flagged at the same 2.4% baseline rate as that of other traders". The test statistic used to measure evidence against the null hypothesis was the number of trades flagged by the algorithm, or 70/2021. The plot above displays the distribution of this test statistic, assuming that the null hypothesis is true. The p-value is 0.0019.\
+Conclusion: The p-value is less than 0.05, so we reject the null hypothesis. This means that trades are NOT flagged at the same 2.4% rate.
+
+# Problem 2
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# q2
+
+health_sim = do(100000) * nflip(n = 50, prob = 0.03)
+
+ggplot(health_sim) + 
+  geom_histogram(aes(x = nflip), binwidth = 1)
+
+pval <- (sum(health_sim >= 8)) / (100000)
+```
+
+The null hypothesis being tested is "on average, restaurants in the city are cited for health code violations at the same 3% base rate". The test statistic used to measure evidence against the null hypothesis was the number of health code violations, or 8/50. The plot above displays the distribution of this test statistic, assuming that the null hypothesis is true. The p-value is 0.00013.\
+Conclusion: The p-value is less than 0.05, so we reject the null hypothesis. This means that health code violations are NOT at an average rate of 3%.
+
+# Problem 3
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# q3
+
+expected = c(Group_1 = 0.3, Group_2 = 0.25, Group_3 = 0.2, Group_4 = 0.15, Group_5 = 0.10)
+observed =  c(Group_1 = 85, Group_2 = 56, Group_3 = 59, Group_4 = 27, Group_5 = 13)
+sum(observed)
+
+num_jury = 240
+sim = rmultinom(1, num_jury, expected)
+
+chi_stat = function(observed, expected) {
+  sum((observed - expected) ^ 2 / expected)
+}
+
+chi2 = chi_stat(sim, num_jury * expected)
+chi2
+
+num_sims = 100000
+chi2_sim = do(num_sims) * {
+  sim = rmultinom(1, num_jury, expected)
+  this_chi2 = chi_stat(sim, num_jury * expected)
+  c(chi2 = this_chi2)
+}
+
+ggplot(chi2_sim) + 
+  geom_histogram(aes(x = chi2))
+
+pval <- (sum(chi2_sim >= (chi_stat(observed, 240 * expected)))) / (100000) # pval is 0.01
+```
+
+The null hypothesis being tested is "the jury selection process fairly represents the county's eligible population" which means that it is claimed that the observed racial proportions would match the expected proportions. To test this, we compared the expected and observed counts of jurors over 20 trials, created a simulation for 100,000 times each selecting 240 jurors, and calculated the chi-squared statistic for the simulation. From the chi-squared test, The distribution in the plot shows that there is little significance past the value 12.43\
+\
+The p-value is 0.014.\
+Conclusion: The p-value is less than 0.05, which means we can reject the null hypothesis that jurors are chosen fairly. This may be due to a shifting demographic, or racial prejudice which undoubtedly still plays a factor in many similar situations. Further investigation across multiple counties may be done in order to determine a more accurate reasoning.
+
+# Problem 4
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# import csv, setup etc.
+letter_freq <- read.csv("letter_frequencies.csv")
+brown <- readLines("brown_sentences.txt")
+```
+
+## Part A
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# q4a
+
+calculate_chi_squared = function(sentence, freq_table) {
+
+  freq_table$Probability = freq_table$Probability / sum(freq_table$Probability)
+  
+  clean_sentence = gsub("[^A-Za-z]", "", sentence)
+  clean_sentence = toupper(clean_sentence)
+
+  observed_counts = table(factor(strsplit(clean_sentence, "")[[1]], levels = freq_table$Letter))
+
+  total_letters = sum(observed_counts)
+  expected_counts = total_letters * freq_table$Probability
+
+  chi_squared_stat = sum((observed_counts - expected_counts)^2 / expected_counts)
+  
+  return(chi_squared_stat)
+}
+
+chi_square <- c()
+
+for (line in brown) {
+  chi_squared_value <- calculate_chi_squared(line, letter_freq)
+  chi_square <- append(chi_square, chi_squared_value)
+}
+
+hist(chi_square, main = "Chi Squared Distribution for Letter Frequency")
+
+```
+
+## Part B
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results=FALSE}
+# q4b
+
+sentences <- c(
+  "She opened the book and started to read the first chapter, eagerly anticipating what might come next.",
+  "Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.",
+  "The museum’s new exhibit features ancient artifacts from various civilizations around the world.",
+  "He carefully examined the document, looking for any clues that might help solve the mystery.",
+  "The students gathered in the auditorium to listen to the guest speaker’s inspiring lecture.",
+  "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.",
+  "The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.",
+  "They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.",
+  "The committee reviewed the proposal and provided many points of useful feedback to improve the
+project’s effectiveness.",
+  "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations."
+)
+
+pvals <- c()
+
+compute_p <- function(chi_stat, null_dist) {
+  mean(null_dist >= chi_stat)
+}
+
+chi2_sent <- sapply(sentences, calculate_chi_squared, freq_table = letter_freq)
+
+p_val_sent <- sapply(chi2_sent, compute_p, null_dist = chi_square)
+
+print(p_val_sent)
+```
+
+the table displays all p-values in the order in which the sentences are inputted. Based on the p-values given sentence 6 had the lowest p-values and is low enough to reject the null hypothesis, concluding that sentence 6 was written with an LLM.
+
+Sentence 6: "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland."
+
+p-val = 0.001
